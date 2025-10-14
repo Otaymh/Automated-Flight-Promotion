@@ -1,9 +1,6 @@
 from pydantic import BaseModel, validator, Field
-from sqlalchemy import Column, Integer, String, DateTime
-from sqlalchemy.ext.declarative import declarative_base
 import datetime
-
-Base = declarative_base()
+import pandas as pd
 
 class FlightData(BaseModel):
     price: int = Field(..., gt=0)
@@ -16,6 +13,13 @@ class FlightData(BaseModel):
         if v < 1:
             raise ValueError('Price must be at least $1')
         return v
+
+# Optional: Comment out SQLAlchemy models since using Supabase API
+"""
+from sqlalchemy import Column, Integer, String, DateTime
+from sqlalchemy.ext.declarative import declarative_base
+
+Base = declarative_base()
 
 class Flight(Base):
     __tablename__ = "flights"
@@ -34,6 +38,4 @@ class Post(Base):
     caption = Column(String)
     image_url = Column(String)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
-
-
-    
+"""
