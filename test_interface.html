@@ -57,16 +57,25 @@
     </div>
 
     <script>
-        const API_BASE_URL = 'http://127.0.0.1:8000';  // Your backend
-        const API_KEY = 'xX2GcwQclInV4Qsxi2UBo3zC0ucsNkkZecgLJZTz';  // Your API key
+        // Use Ngrok URL for team; switch to 'http://127.0.0.1:8000' for local testing
+        const API_BASE_URL = ' https://unbrazen-arrythmically-ulrike.ngrok-free.dev/ngrok/io'; // Replace with actual Ngrok URL
+        const API_KEY = 'xX2GcwQclInV4Qsxi2UBo3zC0ucsNkkZecgLJZTz'; // Match your .env API_KEY
         
         async function generatePost() {
             const price = document.getElementById('price').value;
-            const destination = document.getElementById('destination').value;
-            const type = document.getElementById('type').value;
+            const destination = document.getElementById('destination').value.trim();
+            const type = document.getElementById('type').value.trim();
             
             if (!price || !destination || !type) {
                 alert('يرجى ملء جميع الحقول');
+                console.log('Missing fields:', { price, destination, type });
+                return;
+            }
+
+            const parsedPrice = parseInt(price, 10);
+            if (isNaN(parsedPrice) || parsedPrice < 1) {
+                alert('السعر يجب أن يكون رقمًا صحيحًا وأكبر من أو يساوي 1');
+                console.log('Invalid price:', price);
                 return;
             }
             
@@ -83,15 +92,18 @@
                         'X-API-Key': API_KEY
                     },
                     body: JSON.stringify({
-                        price: parseInt(price),
+                        price: parsedPrice,
                         destination: destination,
                         type: type
                     })
                 });
                 
+                const text = await response.text(); // Capture raw response
+                console.log('Server Response:', text);
+
                 if (!response.ok) {
-                    const error = await response.text();
-                    throw new Error(`HTTP ${response.status}: ${error}`);
+                    const error = text ? JSON.parse(text) : { detail: `HTTP ${response.status}: Unknown error` };
+                    throw new Error(`HTTP ${response.status}: ${JSON.stringify(error.detail || error)}`);
                 }
                 
                 const data = await response.json();
@@ -100,10 +112,8 @@
                 const imageDiv = document.getElementById('generated-image');
                 if (data.image_url) {
                     if (data.image_url.startsWith('data:')) {
-                        // Base64
                         imageDiv.innerHTML = `<img src="${data.image_url}" alt="Generated Post">`;
                     } else {
-                        // URL
                         imageDiv.innerHTML = `<img src="${data.image_url}" alt="Generated Post" onerror="this.src='https://via.placeholder.com/800x600?text=Image+Error'">`;
                     }
                 }
@@ -124,6 +134,35 @@
                 document.querySelector('button').textContent = ' إنشاء منشور';
             }
         }
+
+        // Optional: Add GET test function
+        async function getLatestPost() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/generate_post`, {
+                    method: 'GET',
+                    headers: {
+                        'X-API-Key': API_KEY
+                    }
+                });
+                const text = await response.text();
+                console.log('GET Response:', text);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${text}`);
+                }
+                const data = await response.json();
+                document.getElementById('generated-image').innerHTML = data.image_url ? `<img src="${data.image_url}" alt="Latest Post">` : '<p>No image</p>';
+                document.getElementById('caption').innerHTML = `<strong> النص:</strong><br>${data.caption || 'No caption'}`;
+                document.getElementById('status').innerHTML = '<p style="color: green;"> تم جلب المنشور بنجاح!</p>';
+                document.getElementById('result').style.display = 'block';
+            } catch (error) {
+                console.error('GET Error:', error);
+                document.getElementById('status').innerHTML = `<p class="error"> خطأ: ${error.message}</p>`;
+                document.getElementById('result').style.display = 'block';
+            }
+        }
+
+        // Add button for GET (optional)
+        document.querySelector('button[onclick="generatePost()"]').insertAdjacentHTML('afterend', '<button onclick="getLatestPost()" style="background: #6c757d; margin-top: 10px;">جلب آخر منشور</button>');
     </script>
 </body>
 </html>

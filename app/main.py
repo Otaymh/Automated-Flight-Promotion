@@ -21,10 +21,10 @@ app = FastAPI(
     redoc_url="/api/redoc",
 )
 
-# CORS configuration
+# CORS configuration (fully open for Ngrok testing)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost", "http://localhost:8080", "*"],
+    allow_origins=["*"],  # Allow all origins, including Ngrok and Flutter
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -41,28 +41,25 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
-    logger.error(f"Error: {exc.detail}")
+    logger.error(f"Error: {exc.detail} for request {request.url}")
     return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
 
 @app.post("/generate_post", response_model=dict)
 @limiter.limit("10/minute")
 async def generate_post(request: Request, flight: FlightData, api_key: str = Depends(api_key_auth)):
     try:
-        logger.info(f"Processing flight to {flight.destination}")
-        
+        logger.info(f"Processing flight to {flight.destination} from {request.client.host}")
         background_image = fetch_background_image(flight.destination)
         caption = generate_caption(flight.dict(), os.getenv('OPENAI_API_KEY'))
         composed_image = compose_image(background_image, flight.price, flight.destination, flight.type)
         
-        # Save to Supabase flight_posts table
         data = {
             "destination": flight.destination,
             "price": flight.price,
             "type": flight.type,
             "image_url": composed_image,
             "created_at": pd.Timestamp.now().isoformat(),
-            "user_id": None  # Set to None or a specific user ID if required
-            # caption is not a column in flight_posts, so it's excluded
+            "user_id": None
         }
         response = supabase.table("flight_posts").insert(data).execute()
         
@@ -75,7 +72,6 @@ async def generate_post(request: Request, flight: FlightData, api_key: str = Dep
             }
         else:
             raise Exception("Failed to insert data into Supabase")
-
     except Exception as e:
         logger.error(f"Error in generate_post: {str(e)}")
         raise HTTPException(status_code=500, detail="فشل في إنشاء المنشور")

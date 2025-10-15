@@ -60,19 +60,16 @@ def generate_caption(flight_data: dict, api_key: str) -> str:
 def compose_image(background_image_bytes: BytesIO, price: int, destination: str, flight_type: str) -> str:
     """Create Instagram post with details in styled boxes using Pillow."""
     try:
-        
         background = Image.open(background_image_bytes).convert('RGB')
-        background = background.resize((1080, 1080), Image.Resampling.LANCZOS)  # it's instagram square
+        background = background.resize((1080, 1080), Image.Resampling.LANCZOS)  # Instagram square
         
         draw = ImageDraw.Draw(background)
-        
         
         font_large = ImageFont.load_default()
         try:
             font_large = ImageFont.truetype("arial.ttf", 60)
         except:
             pass
-        
         
         dest_bbox = draw.textbbox((0, 0), destination, font=font_large)
         dest_width = dest_bbox[2] - dest_bbox[0] + 40
@@ -81,7 +78,6 @@ def compose_image(background_image_bytes: BytesIO, price: int, destination: str,
         draw.rectangle([dest_x-20, dest_y-20, dest_x+dest_width+20, dest_y+80], fill='white', outline='black', width=3)
         draw.text((dest_x, dest_y), destination, fill='black', font=font_large)
         
-        
         price_text = f"{price} دولار"
         price_bbox = draw.textbbox((0, 0), price_text, font=font_large)
         price_width = price_bbox[2] - price_bbox[0] + 40
@@ -89,7 +85,6 @@ def compose_image(background_image_bytes: BytesIO, price: int, destination: str,
         price_y = dest_y + 120
         draw.rectangle([price_x-20, price_y-20, price_x+price_width+20, price_y+80], fill='#28a745', outline='darkgreen', width=3)
         draw.text((price_x, price_y), price_text, fill='white', font=font_large)
-        
         
         type_bbox = draw.textbbox((0, 0), flight_type, font=font_large)
         type_width = type_bbox[2] - type_bbox[0] + 40
