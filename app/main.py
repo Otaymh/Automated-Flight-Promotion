@@ -61,7 +61,7 @@ async def generate_post(request: Request, flight: FlightData, api_key: str = Dep
             "created_at": pd.Timestamp.now().isoformat(),
             "user_id": None
         }
-        response = supabase.table("flight_posts").insert(data).execute()
+        response = supabase.table("flight_post").insert(data).execute()
         
         if response.data:
             logger.info(f"Successfully generated post for {flight.destination}")

@@ -1,7 +1,7 @@
 import requests
 import os
 import re
-import base64 
+import base64
 from dotenv import load_dotenv
 from io import BytesIO
 from PIL import Image, ImageDraw, ImageFont
@@ -34,7 +34,6 @@ def fetch_background_image(destination: str) -> BytesIO:
         raise ValueError("No image data from OpenAI")
     except Exception as e:
         print(f"OpenAI error: {e}")
-    
         img = Image.new('RGB', (800, 600), color='lightblue')
         draw = ImageDraw.Draw(img)
         font = ImageFont.load_default()
@@ -58,51 +57,51 @@ def generate_caption(flight_data: dict, api_key: str) -> str:
         return f"رحلة إلى {flight_data['destination']} بسعر {flight_data['price']} دولار #سفر"
 
 def compose_image(background_image_bytes: BytesIO, price: int, destination: str, flight_type: str) -> str:
-    """Create Instagram post with details in styled boxes using Pillow."""
+    """Create Instagram post with details in styled boxes using Pillow, ensuring Arabic text is upright."""
     try:
         background = Image.open(background_image_bytes).convert('RGB')
-        background = background.resize((1080, 1080), Image.Resampling.LANCZOS)  # Instagram square
-        
+        background = background.resize((1080, 1080), Image.Resampling.LANCZOS) 
+
         draw = ImageDraw.Draw(background)
-        
-        font_large = ImageFont.load_default()
+
+        # Use a font that supports Arabic (NotoSansArabic or fallback to default)
         try:
-            font_large = ImageFont.truetype("arial.ttf", 60)
+            font_large = ImageFont.truetype("NotoSansArabic-Regular.ttf", 60)  # Requires font file
         except:
-            pass
-        
-        dest_bbox = draw.textbbox((0, 0), destination, font=font_large)
-        dest_width = dest_bbox[2] - dest_bbox[0] + 40
-        dest_x = (1080 - dest_width) // 2
-        dest_y = 200
-        draw.rectangle([dest_x-20, dest_y-20, dest_x+dest_width+20, dest_y+80], fill='white', outline='black', width=3)
-        draw.text((dest_x, dest_y), destination, fill='black', font=font_large)
-        
+            font_large = ImageFont.load_default()  # Fallback if font not found
+
+        # Ensure Arabic text is rendered right-to-left and upright
+        def draw_arabic_text(text, x, y, box_color, outline_color, font):
+            bbox = draw.textbbox((x, y), text, font=font)
+            text_width = bbox[2] - bbox[0]
+            text_height = bbox[3] - bbox[1]
+            box_x = x - text_width - 40
+            draw.rectangle(
+                [box_x - 20, y - 20, box_x + text_width + 20, y + text_height + 20],
+                fill=box_color,
+                outline=outline_color,
+                width=3
+            )
+            draw.text((box_x, y), text, fill='white' if box_color != 'white' else 'black', font=font, align='right')
+
+        # Destination (white box)
+        draw_arabic_text(destination, 1080 // 2, 200, 'white', 'black', font_large)
+
+        # Price (green box)
         price_text = f"{price} دولار"
-        price_bbox = draw.textbbox((0, 0), price_text, font=font_large)
-        price_width = price_bbox[2] - price_bbox[0] + 40
-        price_x = (1080 - price_width) // 2
-        price_y = dest_y + 120
-        draw.rectangle([price_x-20, price_y-20, price_x+price_width+20, price_y+80], fill='#28a745', outline='darkgreen', width=3)
-        draw.text((price_x, price_y), price_text, fill='white', font=font_large)
-        
-        type_bbox = draw.textbbox((0, 0), flight_type, font=font_large)
-        type_width = type_bbox[2] - type_bbox[0] + 40
-        type_x = (1080 - type_width) // 2
-        type_y = price_y + 120
-        draw.rectangle([type_x-20, type_y-20, type_x+type_width+20, type_y+80], fill='#007bff', outline='darkblue', width=3)
-        draw.text((type_x, type_y), flight_type, fill='white', font=font_large)
-        
+        draw_arabic_text(price_text, 1080 // 2, 320, '#28a745', 'darkgreen', font_large)
+
+        # Flight Type (blue box)
+        draw_arabic_text(flight_type, 1080 // 2, 440, '#007bff', 'darkblue', font_large)
+
         final_bytes = BytesIO()
         background.save(final_bytes, format='JPEG', quality=95)
         final_bytes.seek(0)
-        
+
         image_b64 = base64.b64encode(final_bytes.getvalue()).decode('utf-8')
-        print(f" Composed Instagram post for {destination}")
         return f"data:image/jpeg;base64,{image_b64}"
-        
+
     except Exception as e:
-        print(f" Composition error: {e}")
-      
+        print(f"Composition error: {e}")
         image_b64 = base64.b64encode(background_image_bytes.getvalue()).decode('utf-8')
         return f"data:image/jpeg;base64,{image_b64}"
